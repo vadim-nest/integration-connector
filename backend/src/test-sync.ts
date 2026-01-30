@@ -1,7 +1,7 @@
 // backend/src/test-sync.ts
 import "dotenv/config";
-import { runSync } from "./services/syncService";
-import { prisma } from "./db/prisma";
+import { runSync } from "./services/syncService.js";
+import { prisma } from "./db/prisma.js";
 
 async function main() {
   console.log(

@@ -1,11 +1,18 @@
 import express from "express";
+import type {
+  ErrorRequestHandler,
+  Request,
+  Response,
+  NextFunction,
+} from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import api from "./routes/api.js";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT || 4000);
 
 app.use(cors());
 app.use(express.json());
@@ -14,54 +21,20 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "Backend is reachable" });
 });
 
-// Trigger Sync Run
-app.post("/sync", async (req, res) => {
-  const { source } = req.query;
-  if (source !== "file") {
-    return res.status(400).json({ error: 'Source "file" is required' });
-  }
+app.use("/api", api);
 
-  try {
-    // TODO: Implement syncService.runFileSync()
-    res.json({ message: "Sync started", syncRunId: "temp-id" });
-  } catch (error) {
-    res.status(500).json({ error: "Sync failed" });
-  }
-});
+app.use(
+  (
+    err: ErrorRequestHandler,
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  },
+);
 
-// Fetch recent sync runs
-app.get("/sync-runs", async (req, res) => {
-  try {
-    // TODO: prisma.syncRun.findMany()
-    res.json([]);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch runs" });
-  }
-});
-
-// List employees with summary data
-app.get("/employees", async (req, res) => {
-  try {
-    // TODO: Fetch employees + include lastShift and totalEarnings
-    res.json([]);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch employees" });
-  }
-});
-
-// Fetch shifts for specific employee with date range
-app.get("/employees/:externalId/shifts", async (req, res) => {
-  const { externalId } = req.params;
-  const { from, to } = req.query;
-
-  try {
-    // TODO: Fetch shifts + calculate totals for range
-    res.json({ shifts: [], totals: {} });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch shifts" });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running at http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Backend running at http://0.0.0.0:${PORT}`);
 });

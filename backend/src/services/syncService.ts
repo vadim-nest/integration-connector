@@ -1,7 +1,8 @@
-import { prisma } from "../db/prisma";
-import { parseCsv } from "./fileService";
-import { EmployeeCSVSchema, ShiftCSVSchema } from "../domain/schemas";
+import { prisma } from "../db/prisma.js";
+import { parseCsv } from "./fileService.js";
+import { EmployeeCSVSchema, ShiftCSVSchema } from "../domain/schemas.js";
 import { differenceInMinutes, parseISO } from "date-fns";
+import type { Employee } from "@prisma/client";
 
 interface SyncError {
   row: number;
@@ -73,7 +74,9 @@ export const runSync = async () => {
 
     // Optimization: Load valid employees into memory to avoid N+1 queries for rate lookups
     const employees = await prisma.employee.findMany();
-    const employeeMap = new Map(employees.map((e) => [e.externalId, e]));
+    const employeeMap = new Map<string, Employee>(
+      employees.map((e) => [e.externalId, e]),
+    );
 
     for (const [index, row] of shiftRows.entries()) {
       const result = ShiftCSVSchema.safeParse(row);
@@ -145,7 +148,7 @@ export const runSync = async () => {
         finishedAt: new Date(),
         recordsInserted, // Simplification: we're counting total upserts as inserted for now
         recordsErrored: errors.length,
-        errorLog: errors, // Storing compact JSON
+        errorLog: errors as any, // Storing compact JSON
       },
     });
 
@@ -157,7 +160,7 @@ export const runSync = async () => {
       data: {
         status: "ERROR",
         finishedAt: new Date(),
-        errorLog: errors,
+        errorLog: errors as any,
       },
     });
     throw err;
