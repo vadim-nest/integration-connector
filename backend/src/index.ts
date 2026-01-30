@@ -10,6 +10,10 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", message: "Backend is reachable" });
+});
+
 // Trigger Sync Run
 app.post("/sync", async (req, res) => {
   const { source } = req.query;

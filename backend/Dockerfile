@@ -1,0 +1,15 @@
+FROM node:20-slim
+
+# Install openssl for Prisma
+RUN apt-get update -y && apt-get install -y openssl
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+# We'll run the dev version for the take-home so it's easy to inspect
+EXPOSE 4000
+CMD ["npm", "run", "dev"]
