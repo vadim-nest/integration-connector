@@ -9,6 +9,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+RUN npx prisma generate
 
 # We'll run the dev version for the take-home so it's easy to inspect
 EXPOSE 4000

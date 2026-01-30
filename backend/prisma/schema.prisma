@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Employee {
+  id              Int      @id @default(autoincrement())
+  // "stable identifier from the source" - Unique is critical for idempotent upserts
+  externalId      String   @unique
+  
+  firstName       String
+  lastName        String
+  // "nullable; normalized to lowercase"
+  email           String?
+  
+  // "integer; used for earnings"
+  hourlyRateCents Int
+  active          Boolean
+
+  // Relation
+  shifts          Shift[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Shift {
+  id                 Int      @id @default(autoincrement())
+  // "stable identifier from the source"
+  externalId         String   @unique
+  
+  // Linking directly to Employee via externalId (as permitted by PDF)
+  // This simplifies the CSV import significantly.
+  employeeExternalId String
+  employee           Employee @relation(fields: [employeeExternalId], references: [externalId])
+
+  startAt            DateTime
+  endAt              DateTime
+  breakMinutes       Int      @default(0)
+  
+  // Derived fields
+  workMinutes        Int
+  earningsCents      Int
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Index for faster date-range queries (Required for the "Fetch shifts" API)
+  @@index([startAt])
+  @@index([employeeExternalId])
+}
+
+model SyncRun {
+  id              Int        @id @default(autoincrement())
+  startedAt       DateTime   @default(now())
+  finishedAt      DateTime?
+  
+  status          SyncStatus
+  source          SyncSource
+  
+  recordsRead     Int        @default(0)
+  recordsInserted Int        @default(0)
+  recordsUpdated  Int        @default(0)
+  recordsErrored  Int        @default(0)
+  
+  // "compact list of row-level issues"
+  errorLog        Json?
+}
+
+enum SyncStatus {
+  SUCCESS
+  ERROR // Used if the process crashes, distinct from row-level errors
+}
+
+enum SyncSource {
+  FILE
+  API
+}
