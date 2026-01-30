@@ -71,8 +71,9 @@ model SyncRun {
 }
 
 enum SyncStatus {
+  IN_PROGRESS
   SUCCESS
-  ERROR // Used if the process crashes, distinct from row-level errors
+  ERROR
 }
 
 enum SyncSource {

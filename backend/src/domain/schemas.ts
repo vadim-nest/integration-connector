@@ -7,8 +7,14 @@ export const EmployeeCSVSchema = z.object({
   last_name: z.string().optional(),
   email: z
     .string()
-    .email("Invalid email format")
-    .transform((str) => str.toLowerCase()),
+    .optional()
+    .transform((raw) => {
+      const v = (raw ?? "").trim();
+      if (!v) return null;
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      if (!ok) throw new Error("Invalid email format");
+      return v.toLowerCase();
+    }),
   hourly_rate: z.string().transform((val) => {
     const floatVal = parseFloat(val);
     if (isNaN(floatVal) || floatVal < 0) {

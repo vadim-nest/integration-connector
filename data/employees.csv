@@ -1,0 +1,4 @@
+external_id,first_name,last_name,email,hourly_rate,active
+E-1001,Ada,Lovelace,ada@example.com,15.25,true
+E-1002,Grace,Hopper,grace@example.com,18.00,true
+E-1003,Alan,Turing,,21.10,false
