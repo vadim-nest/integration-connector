@@ -7,24 +7,12 @@ export const EmployeeCSVSchema = z.object({
   last_name: z.string().optional().default(""),
   email: z
     .string()
-    .optional()
-    .transform((raw) => {
-      const v = (raw ?? "").trim();
-      if (!v) return null;
-      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-      if (!ok) throw new Error("Invalid email format");
-      return v.toLowerCase();
-    }),
-  hourly_rate: z.string().transform((val) => {
-    const floatVal = parseFloat(val);
-    if (isNaN(floatVal) || floatVal < 0) {
-      throw new Error("Invalid hourly rate");
-    }
-    // Convert GBP (12.50) to Pence (1250)
-    // Use Math.round to avoid floating point errors (12.50 * 100 = 1250.000001)
-    return Math.round(floatVal * 100);
-  }),
-  active: z.string().transform((val) => val.toLowerCase() === "true"),
+    .email()
+    .nullable()
+    .or(z.literal(""))
+    .transform((v) => v?.toLowerCase() || null),
+  hourly_rate: z.coerce.number().transform((v) => Math.round(v * 100)),
+  active: z.coerce.boolean(),
 });
 
 export type EmployeeCSVRow = z.infer<typeof EmployeeCSVSchema>;
@@ -34,17 +22,12 @@ export const ShiftCSVSchema = z
   .object({
     external_id: z.string().min(1, "External ID is required"),
     employee_external_id: z.string().min(1, "Employee ID is required"),
-    start_at: z.string().datetime({ message: "Invalid ISO start date" }),
-    end_at: z.string().datetime({ message: "Invalid ISO end date" }),
-    break_minutes: z
-      .string()
-      .optional()
-      .transform((val) => {
-        // Empty string or undefined treated as 0
-        if (!val || val.trim() === "") return 0;
-        const num = parseInt(val, 10);
-        return isNaN(num) ? 0 : num;
-      }),
+    start_at: z.string().datetime(),
+    end_at: z.string().datetime(),
+    break_minutes: z.preprocess(
+      (val) => (val === "" || val === null || val === undefined ? 0 : val),
+      z.coerce.number().int().nonnegative(),
+    ),
   })
   .refine(
     (data) => {

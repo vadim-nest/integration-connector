@@ -29,6 +29,12 @@ services:
         condition: service_healthy
     command: sh -c "npx prisma migrate deploy && npm run dev"
 
+  mock-provider:
+      build: ./backend
+      command: npx tsx src/mock-provider.ts
+      ports:
+        - "4001:4001"
+        
   frontend:
     build: ./frontend
     ports:

@@ -1,4 +1,5 @@
 import { prisma } from "../db/prisma.js";
+import axios from "axios";
 import { parseCsv } from "./fileService.js";
 import { EmployeeCSVSchema, ShiftCSVSchema } from "../domain/schemas.js";
 import { differenceInMinutes, parseISO } from "date-fns";
@@ -11,33 +12,52 @@ interface SyncError {
   data?: any;
 }
 
-export const runSync = async () => {
+export const runSync = async (source: "FILE" | "API" = "FILE") => {
   const startedAt = new Date();
   const errors: SyncError[] = [];
 
-  // 1. Create SyncRun Record
+  const baseUrl =
+    process.env.NODE_ENV === "production"
+      ? "http://mock-provider:4001"
+      : "http://localhost:4001";
+
+  // 1) Create SyncRun record
   const syncRun = await prisma.syncRun.create({
-    data: {
-      startedAt,
-      status: "IN_PROGRESS",
-      source: "FILE",
-    },
+    data: { startedAt, status: "IN_PROGRESS", source },
   });
 
   let recordsInserted = 0;
-  let recordsUpdated = 0; // Prisma upsert makes it hard to distinguish, we might just track "processed"
 
   try {
-    // --- STEP A: SYNC EMPLOYEES ---
-    // We parse all rows first. In a massive scale system, we would stream & batch.
-    const employeeRows = await parseCsv<any>("./data/employees.csv");
+    let employeeRows: any[] = [];
+    let shiftRows: any[] = [];
 
+    if (source === "FILE") {
+      employeeRows = await parseCsv("./data/employees.csv");
+      shiftRows = await parseCsv("./data/shifts.csv");
+    } else {
+      const empRes = await axios.get(`${baseUrl}/employees`);
+      const shiftRes = await axios.get(`${baseUrl}/shifts`);
+      employeeRows = empRes.data;
+      shiftRows = shiftRes.data;
+    }
+
+    console.log(
+      "shiftRows length:",
+      Array.isArray(shiftRows) ? shiftRows.length : typeof shiftRows,
+    );
+    console.log(
+      "shiftRows first:",
+      Array.isArray(shiftRows) ? shiftRows[0] : null,
+    );
+
+    // --- STEP A: SYNC EMPLOYEES ---
     for (const [index, row] of employeeRows.entries()) {
       const result = EmployeeCSVSchema.safeParse(row);
 
       if (!result.success) {
         errors.push({
-          row: index + 1, // CSVs are 1-indexed for humans
+          row: index + 1,
           type: "Employee",
           error: result.error.issues.map((i) => i.message).join(", "),
           data: row.external_id,
@@ -47,7 +67,6 @@ export const runSync = async () => {
 
       const data = result.data;
 
-      // Idempotent Upsert
       await prisma.employee.upsert({
         where: { externalId: data.external_id },
         update: {
@@ -66,18 +85,16 @@ export const runSync = async () => {
           active: data.active,
         },
       });
+
       recordsInserted++;
     }
 
-    // --- STEP B: SYNC SHIFTS ---
-    const shiftRows = await parseCsv<any>("./data/shifts.csv");
-
-    // Optimization: Load valid employees into memory to avoid N+1 queries for rate lookups
     const employees = await prisma.employee.findMany();
     const employeeMap = new Map<string, Employee>(
       employees.map((e) => [e.externalId, e]),
     );
 
+    // --- STEP B: SYNC SHIFTS ---
     for (const [index, row] of shiftRows.entries()) {
       const result = ShiftCSVSchema.safeParse(row);
 
@@ -94,7 +111,6 @@ export const runSync = async () => {
       const data = result.data;
       const employee = employeeMap.get(data.employee_external_id);
 
-      // Business Rule: Shift must reference a known employee
       if (!employee) {
         errors.push({
           row: index + 1,
@@ -105,14 +121,12 @@ export const runSync = async () => {
         continue;
       }
 
-      // Calculations
       const start = parseISO(data.start_at);
       const end = parseISO(data.end_at);
 
       const durationMinutes = differenceInMinutes(end, start);
       const workMinutes = Math.max(0, durationMinutes - data.break_minutes);
 
-      // Earnings Formula: (workMinutes * rate) / 60, rounded to integer
       const earningsCents = Math.round(
         (workMinutes * employee.hourlyRateCents) / 60,
       );
@@ -137,6 +151,7 @@ export const runSync = async () => {
           earningsCents,
         },
       });
+
       recordsInserted++;
     }
 
@@ -146,15 +161,14 @@ export const runSync = async () => {
       data: {
         status: "SUCCESS",
         finishedAt: new Date(),
-        recordsInserted, // Simplification: we're counting total upserts as inserted for now
+        recordsInserted,
         recordsErrored: errors.length,
-        errorLog: errors as any, // Storing compact JSON
+        errorLog: errors as any,
       },
     });
 
     return { success: true, id: syncRun.id, errors };
   } catch (err: any) {
-    // Catastrophic failure (e.g., DB down)
     await prisma.syncRun.update({
       where: { id: syncRun.id },
       data: {

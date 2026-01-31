@@ -25,15 +25,15 @@ export function SyncDashboard({
     fetchRuns();
   }, []);
 
-  const handleSync = async () => {
+  const handleSync = async (source: "file" | "api") => {
     setLoading(true);
     setError("");
     try {
-      await api.triggerSync();
-      await fetchRuns(); // Refresh local status
-      onSyncComplete(); // Tell parent to refresh employee list
+      await api.triggerSync(source); // Passes 'file' or 'api'
+      await fetchRuns();
+      onSyncComplete();
     } catch (err) {
-      setError("Failed to trigger sync");
+      setError(`Failed to trigger ${source} sync`);
     } finally {
       setLoading(false);
     }
@@ -62,9 +62,8 @@ export function SyncDashboard({
                 })}
               </span>
               <div className="mt-1 text-xs text-gray-500">
-                Processed: {lastRun.recordsInserted} inserted,{" "}
-                {lastRun.recordsUpdated} updated, {lastRun.recordsErrored}{" "}
-                errors
+                Source: <span className="font-bold">{lastRun.source}</span> |
+                Processed: {lastRun.recordsInserted} inserted...
               </div>
             </div>
           ) : (
@@ -74,15 +73,22 @@ export function SyncDashboard({
           )}
         </div>
 
-        <div className="flex flex-col items-end">
+        <div className="flex gap-2">
           <button
-            onClick={handleSync}
+            onClick={() => handleSync("file")}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
           >
-            {loading ? "Syncing..." : "Run Sync"}
+            {loading ? "Syncing..." : "Sync from File"}
           </button>
-          {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
+
+          <button
+            onClick={() => handleSync("api")}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+          >
+            {loading ? "Syncing..." : "Sync from API"}
+          </button>
         </div>
       </div>
     </div>

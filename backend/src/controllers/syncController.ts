@@ -8,8 +8,12 @@ export async function postSync(
   next: NextFunction,
 ) {
   try {
-    const result = await runSync();
-    res.status(200).json({ id: result.id, errors: result.errors });
+    // Get source from query: /api/sync?source=api
+    const source =
+      (req.query.source as string)?.toUpperCase() === "API" ? "API" : "FILE";
+
+    const result = await runSync(source);
+    res.status(200).json(result);
   } catch (e) {
     next(e);
   }

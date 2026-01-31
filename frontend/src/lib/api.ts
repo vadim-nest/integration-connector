@@ -9,8 +9,8 @@ const client = axios.create({
 
 export const api = {
   // Sync
-  triggerSync: async () => {
-    const { data } = await client.post<SyncRun>("/api/sync");
+  triggerSync: async (source: "file" | "api" = "file") => {
+    const { data } = await client.post<SyncRun>(`/api/sync?source=${source}`);
     return data;
   },
 
@@ -41,7 +41,7 @@ export const api = {
     const { data } = await client.get(
       `/api/employees/${externalId}/shifts?${params.toString()}`,
     );
-    console.log(data)
+    console.log(data);
     return data;
   },
 };

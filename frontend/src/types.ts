@@ -23,6 +23,7 @@ export interface Shift {
 export interface SyncRun {
   id: number;
   status: "IN_PROGRESS" | "SUCCESS" | "ERROR";
+  source: "FILE" | "API";
   startedAt: string;
   finishedAt: string | null;
   recordsInserted: number;
