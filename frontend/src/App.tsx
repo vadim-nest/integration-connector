@@ -1,35 +1,70 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect } from "react";
+import { SyncDashboard } from "./components/SyncDashboard";
+import { EmployeeTable } from "./components/EmployeeTable";
+import { EmployeeModal } from "./components/EmployeeModal";
+import { api } from "./lib/api";
+import type { EmployeeSummary } from "./types";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<EmployeeSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getEmployees();
+      setEmployees(data);
+    } catch (err) {
+      console.error("Failed to load employees", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="min-h-screen bg-gray-100 py-10 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-5xl mx-auto">
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Workforce Integration
+          </h1>
+          <p className="mt-1 text-gray-500">
+            Sync status and employee earnings report
+          </p>
+        </header>
+
+        {/* Dashboard Block */}
+        <SyncDashboard onSyncComplete={loadData} />
+
+        {/* Main Content */}
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            Employee Directory
+          </h2>
+          <EmployeeTable
+            employees={employees}
+            loading={loading}
+            onSelect={setSelectedEmployee}
+          />
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      {/* Details Modal */}
+      {selectedEmployee && (
+        <EmployeeModal
+          key={selectedEmployee.externalId}
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;

@@ -1,4 +1,3 @@
-// backend/src/test-sync.ts
 import "dotenv/config";
 import { runSync } from "./services/syncService.js";
 import { prisma } from "./db/prisma.js";

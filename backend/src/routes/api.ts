@@ -11,6 +11,6 @@ router.post("/sync", postSync);
 router.get("/sync-runs", getSyncRuns);
 
 router.get("/employees", getEmployees);
-router.get("/employees/:id/shifts", getEmployeeShifts);
+router.get("/employees/:externalId/shifts", getEmployeeShifts);
 
 export default router;

@@ -9,7 +9,6 @@ export async function postSync(
 ) {
   try {
     const result = await runSync();
-    // you said: return new syncRun ID
     res.status(200).json({ id: result.id, errors: result.errors });
   } catch (e) {
     next(e);

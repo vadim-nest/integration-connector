@@ -3,8 +3,6 @@ import csv from "csv-parser";
 import path from "path";
 
 export const parseCsv = <T>(filePath: string): Promise<T[]> => {
-  // Ensure we are looking in the correct mounted folder
-  // Docker mounts to /app/data, so we assume process.cwd() is /app
   const absolutePath = path.resolve(process.cwd(), filePath);
 
   const results: T[] = [];

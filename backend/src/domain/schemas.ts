@@ -3,8 +3,8 @@ import { z } from "zod";
 // --- Employee Schema ---
 export const EmployeeCSVSchema = z.object({
   external_id: z.string().min(1, "External ID is required"),
-  first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
+  first_name: z.string().optional().default(""),
+  last_name: z.string().optional().default(""),
   email: z
     .string()
     .optional()
